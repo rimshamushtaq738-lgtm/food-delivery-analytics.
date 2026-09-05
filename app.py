@@ -7,203 +7,1032 @@ import os
 import warnings
 from google import genai
 
-# Warnings Suppress
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
-# Page Configuration
+# =========================================================
+# PAGE CONFIG
+# =========================================================
 st.set_page_config(
-    page_title="Food Delivery Analytics Challenge",
+    page_title="Food Delivery Analytics",
     page_icon="🚚",
     layout="wide"
 )
 
-# Custom Styling
+# =========================================================
+# PROFESSIONAL CSS
+# =========================================================
 st.markdown("""
-    <style>
-    .main { background-color: #f8f9fa; }
-    .stAlert { border-radius: 8px; }
-    </style>
+<style>
+
+.main {
+    background-color: #f7f7f8;
+}
+
+.block-container {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+}
+
+.hero {
+    background: linear-gradient(135deg, #172554, #1e3a8a);
+    padding: 28px;
+    border-radius: 18px;
+    color: white;
+    margin-bottom: 25px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.10);
+}
+
+.hero h1 {
+    font-size: 38px;
+    margin-bottom: 5px;
+}
+
+.hero p {
+    font-size: 17px;
+    opacity: 0.9;
+}
+
+.kpi-card {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+    text-align: center;
+}
+
+.kpi-title {
+    color: #64748b;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.kpi-value {
+    color: #172554;
+    font-size: 27px;
+    font-weight: 700;
+}
+
+.question-card {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    border-left: 6px solid #991b1b;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+    margin-bottom: 15px;
+}
+
+.question-title {
+    color: #7f1d1d;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.insight-card {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    border-top: 5px solid #d97706;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+    min-height: 150px;
+}
+
+.section-title {
+    color: #172554;
+    font-size: 25px;
+    font-weight: 700;
+    margin-top: 20px;
+}
+
+</style>
 """, unsafe_allow_html=True)
 
-st.title("🚚 Food Delivery Performance & Operational Dashboard")
-st.caption("Hackathon Task A: Python Data Analysis, Insights & Gemini LLM Integration")
 
-# Load and Clean Data
+# =========================================================
+# HEADER
+# =========================================================
+st.markdown("""
+<div class="hero">
+    <h1>🚚 Food Delivery Analytics</h1>
+    <p>
+        Data-driven analysis of delivery performance, traffic,
+        distance, weather and operational factors.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+
+# =========================================================
+# LOAD & CLEAN DATA
+# =========================================================
 @st.cache_data
-def load_and_clean_data():
-    if not os.path.exists("food_delivery_dataset.csv"):
-        return None, None
-    
-    df_raw = pd.read_csv("food_delivery_dataset.csv")
-    raw_stats = {
-        "rows": df_raw.shape[0],
-        "cols": df_raw.shape[1],
-        "missing": df_raw.isna().sum().sum(),
-        "duplicates": df_raw.duplicated().sum()
-    }
-    
-    df = df_raw.copy()
+def load_data():
+
+    file_path = "food_delivery_dataset.csv"
+
+    df = pd.read_csv(file_path)
+
+    original_rows = len(df)
+    original_columns = len(df.columns)
+
+    original_missing = int(df.isnull().sum().sum())
+    original_duplicates = int(df.duplicated().sum())
+
+    # Clean column names
     df.columns = df.columns.str.strip()
+
+    # Convert numeric columns
+    numeric_columns = [
+        "Delivery_person_Age",
+        "Delivery_person_Ratings",
+        "Time_taken (min)",
+        "distance_km"
+    ]
+
+    for col in numeric_columns:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # Remove duplicates
     df = df.drop_duplicates()
-    
-    df['Delivery_person_Age'] = pd.to_numeric(df['Delivery_person_Age'], errors='coerce')
-    df['Delivery_person_Ratings'] = pd.to_numeric(df['Delivery_person_Ratings'], errors='coerce')
-    df['Time_taken (min)'] = pd.to_numeric(df['Time_taken (min)'], errors='coerce')
-    df['distance_km'] = pd.to_numeric(df['distance_km'], errors='coerce')
-    
-    df['Delivery_person_Age'] = df['Delivery_person_Age'].fillna(df['Delivery_person_Age'].median())
-    df['Delivery_person_Ratings'] = df['Delivery_person_Ratings'].fillna(df['Delivery_person_Ratings'].median())
-    
-    if 'Time_Orderd' in df.columns:
-        df['Time_Orderd'] = df['Time_Orderd'].fillna(df['Time_Orderd'].mode()[0])
-        
-    df['delivery_speed_kmh'] = df['distance_km'] / (df['Time_taken (min)'] / 60)
-    df['delivery_speed_kmh'] = df['delivery_speed_kmh'].replace([np.inf, -np.inf], np.nan).fillna(df['delivery_speed_kmh'].median())
-    
-    return df, raw_stats
 
-df, raw_stats = load_and_clean_data()
+    duplicates_removed = original_duplicates
 
-if df is None:
-    st.error("⚠️ 'food_delivery_dataset.csv' file nahi mili!")
+    # Fill missing numerical values
+    if "Delivery_person_Age" in df.columns:
+        df["Delivery_person_Age"] = df["Delivery_person_Age"].fillna(
+            df["Delivery_person_Age"].median()
+        )
+
+    if "Delivery_person_Ratings" in df.columns:
+        df["Delivery_person_Ratings"] = df["Delivery_person_Ratings"].fillna(
+            df["Delivery_person_Ratings"].median()
+        )
+
+    # Fill order time
+    if "Time_Orderd" in df.columns:
+        df["Time_Orderd"] = df["Time_Orderd"].fillna(
+            df["Time_Orderd"].mode()[0]
+        )
+
+    # Essential columns
+    essential_columns = [
+        "Time_taken (min)",
+        "distance_km",
+        "Road_traffic_density",
+        "Weather_conditions"
+    ]
+
+    existing_essential = [
+        col for col in essential_columns
+        if col in df.columns
+    ]
+
+    df = df.dropna(subset=existing_essential)
+
+    # Remove invalid delivery times
+    if "Time_taken (min)" in df.columns:
+        df = df[df["Time_taken (min)"] > 0]
+
+    # Calculate delivery speed
+    if "distance_km" in df.columns and "Time_taken (min)" in df.columns:
+
+        df["delivery_speed_kmh"] = (
+            df["distance_km"] /
+            (df["Time_taken (min)"] / 60)
+        )
+
+    remaining_missing = int(df.isnull().sum().sum())
+
+    stats = {
+        "original_rows": original_rows,
+        "original_columns": original_columns,
+        "original_missing": original_missing,
+        "duplicates_removed": duplicates_removed,
+        "remaining_missing": remaining_missing,
+        "final_rows": len(df)
+    }
+
+    return df, stats
+
+
+# =========================================================
+# LOAD DATA
+# =========================================================
+try:
+
+    df, stats = load_data()
+
+except FileNotFoundError:
+
+    st.error(
+        "❌ food_delivery_dataset.csv not found. "
+        "Please place the CSV file in the same folder as app.py."
+    )
+
     st.stop()
 
-# Sidebar
-st.sidebar.header("🔍 Global Filters")
-api_key = st.sidebar.text_input("Gemini API Key (Optional)", type="password")
 
-selected_city = st.sidebar.multiselect("Select City", options=df['City'].unique(), default=df['City'].unique())
-selected_traffic = st.sidebar.multiselect("Select Traffic Density", options=df['Road_traffic_density'].unique(), default=df['Road_traffic_density'].unique())
+# =========================================================
+# SIDEBAR FILTERS
+# =========================================================
+st.sidebar.header("🎛️ Dashboard Filters")
 
-fdf = df[(df['City'].isin(selected_city)) & (df['Road_traffic_density'].isin(selected_traffic))]
+filtered_df = df.copy()
 
-# Section A & B: Dataset Audit
-with st.expander("📋 Section A & B: Dataset Loading & Cleaning Audit", expanded=False):
-    c_a, c_b, c_c, c_d = st.columns(4)
-    c_a.metric("Total Records", f"{raw_stats['rows']:,}")
-    c_b.metric("Total Columns", raw_stats['cols'])
-    c_c.metric("Missing Values Cleaned", f"{raw_stats['missing']:,}")
-    c_d.metric("Duplicates Dropped", raw_stats['duplicates'])
-    st.dataframe(fdf.head(5), width=None)
+# City
+if "City" in df.columns:
 
-# Section C: Basic Statistics
-st.header("📊 Section C: Operational Basic Statistics")
-k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Total Deliveries", f"{len(fdf):,}")
-k2.metric("Avg Delivery Time", f"{fdf['Time_taken (min)'].mean():.1f} min", f"Min: {fdf['Time_taken (min)'].min()} | Max: {fdf['Time_taken (min)'].max()}")
-k3.metric("Avg Distance", f"{fdf['distance_km'].mean():.2f} km")
-k4.metric("Avg Speed", f"{fdf['delivery_speed_kmh'].mean():.1f} km/h")
-k5.metric("Avg Rider Rating", f"{fdf['Delivery_person_Ratings'].mean():.2f} ⭐", f"Avg Age: {fdf['Delivery_person_Age'].mean():.1f} yrs")
+    city_options = sorted(
+        df["City"].dropna().unique().tolist()
+    )
 
-st.divider()
+    selected_city = st.sidebar.multiselect(
+        "City",
+        city_options,
+        default=city_options
+    )
 
-# Section D & E: Programmatic Answers & Charts
-st.header("🎯 Section D & E: Competition Answers & Visualizations")
+    if selected_city:
+        filtered_df = filtered_df[
+            filtered_df["City"].isin(selected_city)
+        ]
 
-traffic_impact = fdf.groupby('Road_traffic_density')['Time_taken (min)'].mean().sort_values(ascending=False)
-distance_corr = fdf['distance_km'].corr(fdf['Time_taken (min)'])
-combo_impact = fdf.groupby(['Weather_conditions', 'Road_traffic_density'])['Time_taken (min)'].mean().sort_values(ascending=False)
 
-q1_answer = traffic_impact.index[0] if len(traffic_impact) > 0 else "N/A"
-q1_val = traffic_impact.iloc[0] if len(traffic_impact) > 0 else 0
+# Traffic
+if "Road_traffic_density" in df.columns:
 
-q3_weather = combo_impact.index[0][0] if len(combo_impact) > 0 else "N/A"
-q3_traffic = combo_impact.index[0][1] if len(combo_impact) > 0 else "N/A"
-q3_val = combo_impact.iloc[0] if len(combo_impact) > 0 else 0
+    traffic_options = sorted(
+        df["Road_traffic_density"].dropna().unique().tolist()
+    )
 
-a1, a2, a3 = st.columns(3)
-with a1:
-    st.info(f"**Q1 – Traffic Impact:**\n\nHighest Avg Time: **{q1_answer}**\nAverage Latency: **{q1_val:.2f} mins**")
-with a2:
-    st.info(f"**Q2 – Distance Impact:**\n\nPearson Correlation: **{distance_corr:.4f}**\nIndicates positive linear relationship.")
-with a3:
-    st.info(f"**Q3 – Combined Conditions:**\n\nWorst Combo: **{q3_weather} + {q3_traffic}**\nAverage Latency: **{q3_val:.2f} mins**")
+    selected_traffic = st.sidebar.multiselect(
+        "Road Traffic Density",
+        traffic_options,
+        default=traffic_options
+    )
 
-v_col1, v_col2 = st.columns(2)
+    if selected_traffic:
+        filtered_df = filtered_df[
+            filtered_df["Road_traffic_density"].isin(selected_traffic)
+        ]
 
-with v_col1:
-    st.markdown("### Chart 1: Average Delivery Time by Traffic Density")
-    fig1, ax1 = plt.subplots(figsize=(7, 4.5))
-    sns.barplot(x=traffic_impact.index, y=traffic_impact.values, hue=traffic_impact.index, palette="rocket", legend=False, ax=ax1)
-    ax1.set_title("Traffic Density vs Delivery Duration", fontsize=12, fontweight='bold')
-    ax1.set_xlabel("Traffic Condition", fontsize=10)
-    ax1.set_ylabel("Average Time Taken (minutes)", fontsize=10)
-    for p in ax1.patches:
-        ax1.annotate(f'{p.get_height():.1f}m', (p.get_x() + p.get_width() / 2., p.get_height() / 2),
-                    ha='center', va='center', color='white', fontweight='bold')
-    st.pyplot(fig1)
 
-with v_col2:
-    st.markdown("### Chart 2: Delivery Distance vs. Delivery Time")
-    fig2, ax2 = plt.subplots(figsize=(7, 4.5))
-    sns.regplot(data=fdf.sample(min(2000, len(fdf))), x='distance_km', y='Time_taken (min)',
-                scatter_kws={'alpha':0.2, 'color':'teal'}, line_kws={'color':'red'}, ax=ax2)
-    ax2.set_title(f"Distance vs Duration (Correlation: {distance_corr:.4f})", fontsize=12, fontweight='bold')
-    ax2.set_xlabel("Delivery Distance (km)", fontsize=10)
-    ax2.set_ylabel("Time Taken (minutes)", fontsize=10)
-    st.pyplot(fig2)
+# Weather
+if "Weather_conditions" in df.columns:
 
-st.divider()
+    weather_options = sorted(
+        df["Weather_conditions"].dropna().unique().tolist()
+    )
 
-# Section F: Business Insights
-st.header("💡 Section F: Strategic Business Insights")
-b1, b2, b3 = st.columns(3)
+    selected_weather = st.sidebar.multiselect(
+        "Weather Conditions",
+        weather_options,
+        default=weather_options
+    )
 
-with b1:
-    st.success("""
-    **1. Traffic Bottleneck Management**
-    - **Finding:** Traffic density (Jam) causes the largest delivery delays.
-    - **Business Impact:** Implement dynamic ETA padding and assign riders on 2-wheelers during peak hours.
-    """)
+    if selected_weather:
+        filtered_df = filtered_df[
+            filtered_df["Weather_conditions"].isin(selected_weather)
+        ]
 
-with b2:
-    st.success(f"""
-    **2. Distance Sensitivity & Dynamic Radius**
-    - **Finding:** Correlation of **{distance_corr:.2f}** proves long distance increases duration.
-    - **Business Impact:** Introduce delivery surcharges or cap order radius during peak rush hours.
-    """)
 
-with b3:
-    st.success("""
-    **3. Weather Contingency Planning**
-    - **Finding:** Bad weather combined with heavy traffic yields maximum delivery delays.
-    - **Business Impact:** Offer rider surge incentives and update consumer app promise times during rain.
-    """)
+# Vehicle condition
+if "Vehicle_condition" in df.columns:
 
-st.divider()
+    vehicle_options = sorted(
+        df["Vehicle_condition"].dropna().unique().tolist()
+    )
 
-# Section G: AI Explanation
-st.header("🤖 Section G: AI-Powered Executive Summary (Gemini LLM)")
+    selected_vehicle = st.sidebar.multiselect(
+        "Vehicle Condition",
+        vehicle_options,
+        default=vehicle_options
+    )
 
-if not api_key and "GEMINI_API_KEY" in os.environ:
-    api_key = os.environ["GEMINI_API_KEY"]
+    if selected_vehicle:
+        filtered_df = filtered_df[
+            filtered_df["Vehicle_condition"].isin(selected_vehicle)
+        ]
+
+
+# =========================================================
+# GEMINI API KEY
+# =========================================================
+st.sidebar.markdown("---")
+
+api_key = st.sidebar.text_input(
+    "Gemini API Key",
+    type="password",
+    help="Optional: Add your Gemini API key for AI-generated business explanation."
+)
+
+
+# =========================================================
+# KPI SECTION
+# =========================================================
+st.markdown(
+    '<div class="section-title">📊 Executive Performance Overview</div>',
+    unsafe_allow_html=True
+)
+
+if len(filtered_df) > 0:
+
+    total_deliveries = len(filtered_df)
+
+    avg_delivery_time = filtered_df["Time_taken (min)"].mean()
+
+    avg_distance = filtered_df["distance_km"].mean()
+
+    avg_speed = filtered_df["delivery_speed_kmh"].mean()
+
+    avg_rating = (
+        filtered_df["Delivery_person_Ratings"].mean()
+        if "Delivery_person_Ratings" in filtered_df.columns
+        else np.nan
+    )
+
+    avg_age = (
+        filtered_df["Delivery_person_Age"].mean()
+        if "Delivery_person_Age" in filtered_df.columns
+        else np.nan
+    )
+
+    max_delivery_time = filtered_df["Time_taken (min)"].max()
+
+else:
+
+    total_deliveries = 0
+    avg_delivery_time = 0
+    avg_distance = 0
+    avg_speed = 0
+    avg_rating = 0
+    avg_age = 0
+    max_delivery_time = 0
+
+
+kpi_cols = st.columns(7)
+
+kpis = [
+    ("Total Deliveries", f"{total_deliveries:,}"),
+    ("Avg Delivery Time", f"{avg_delivery_time:.1f} min"),
+    ("Avg Distance", f"{avg_distance:.2f} km"),
+    ("Avg Speed", f"{avg_speed:.2f} km/h"),
+    ("Avg Rating", f"{avg_rating:.2f}"),
+    ("Avg Driver Age", f"{avg_age:.1f}"),
+    ("Max Delivery Time", f"{max_delivery_time:.0f} min")
+]
+
+for col, (title, value) in zip(kpi_cols, kpis):
+
+    col.markdown(
+        f"""
+        <div class="kpi-card">
+            <div class="kpi-title">{title}</div>
+            <div class="kpi-value">{value}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+# =========================================================
+# DATA QUALITY AUDIT
+# =========================================================
+st.markdown(
+    '<div class="section-title">🧹 Data Quality & Cleaning Audit</div>',
+    unsafe_allow_html=True
+)
+
+audit_cols = st.columns(5)
+
+audit_values = [
+    ("Original Records", stats["original_rows"]),
+    ("Columns", stats["original_columns"]),
+    ("Original Missing", stats["original_missing"]),
+    ("Duplicates Removed", stats["duplicates_removed"]),
+    ("Final Records", stats["final_rows"])
+]
+
+for col, (title, value) in zip(audit_cols, audit_values):
+
+    col.metric(title, value)
+
+
+with st.expander("🔎 View Cleaned Dataset"):
+
+    st.dataframe(
+        filtered_df.head(100),
+        use_container_width=True
+    )
+
+with st.expander("📋 Data Types"):
+
+    st.dataframe(
+        filtered_df.dtypes.astype(str).to_frame("Data Type"),
+        use_container_width=True
+    )
+
+
+# =========================================================
+# COMPETITION QUESTIONS
+# =========================================================
+st.markdown(
+    '<div class="section-title">🏆 Competition Questions</div>',
+    unsafe_allow_html=True
+)
+
+
+# =========================================================
+# Q1 TRAFFIC
+# =========================================================
+traffic_summary = (
+    filtered_df
+    .groupby("Road_traffic_density")["Time_taken (min)"]
+    .mean()
+    .sort_values(ascending=False)
+)
+
+q1_traffic = traffic_summary.index[0]
+q1_time = traffic_summary.iloc[0]
+
+st.markdown(
+    f"""
+    <div class="question-card">
+        <div class="question-title">
+            Q1. Which traffic level has the highest average delivery time?
+        </div>
+        <p>
+            <b>{q1_traffic}</b> traffic has the highest average delivery time
+            of <b>{q1_time:.2f} minutes</b>.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# =========================================================
+# Q2 DISTANCE
+# =========================================================
+distance_corr = filtered_df[
+    ["distance_km", "Time_taken (min)"]
+].corr().iloc[0, 1]
+
+if distance_corr > 0.3:
+
+    distance_statement = (
+        f"Yes. Distance has a positive relationship with delivery time "
+        f"(correlation = {distance_corr:.2f})."
+    )
+
+elif distance_corr > 0:
+
+    distance_statement = (
+        f"Yes, but the relationship is weak "
+        f"(correlation = {distance_corr:.2f})."
+    )
+
+else:
+
+    distance_statement = (
+        f"The dataset does not show a positive relationship "
+        f"(correlation = {distance_corr:.2f})."
+    )
+
+
+st.markdown(
+    f"""
+    <div class="question-card">
+        <div class="question-title">
+            Q2. Does distance affect delivery time?
+        </div>
+        <p>{distance_statement}</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# =========================================================
+# Q3 WEATHER + TRAFFIC
+# =========================================================
+combo_summary = (
+    filtered_df
+    .groupby(
+        ["Weather_conditions", "Road_traffic_density"]
+    )["Time_taken (min)"]
+    .mean()
+    .sort_values(ascending=False)
+)
+
+if len(combo_summary) > 0:
+
+    q3_combo = combo_summary.index[0]
+    q3_time = combo_summary.iloc[0]
+
+    q3_weather = q3_combo[0]
+    q3_traffic = q3_combo[1]
+
+else:
+
+    q3_weather = "N/A"
+    q3_traffic = "N/A"
+    q3_time = 0
+
+
+st.markdown(
+    f"""
+    <div class="question-card">
+        <div class="question-title">
+            Q3. Which weather + traffic combination causes the highest delay?
+        </div>
+        <p>
+            <b>{q3_weather}</b> weather with
+            <b>{q3_traffic}</b> traffic produces the highest
+            average delivery time of <b>{q3_time:.2f} minutes</b>.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# =========================================================
+# CHART STYLE FUNCTION
+# =========================================================
+def style_chart(ax):
+
+    ax.set_axisbelow(True)
+
+    ax.grid(
+        axis="y",
+        linestyle="--",
+        alpha=0.20
+    )
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    ax.spines["left"].set_alpha(0.25)
+    ax.spines["bottom"].set_alpha(0.25)
+
+
+# =========================================================
+# CHART 1 — TRAFFIC
+# MAROON / RED / BURGUNDY
+# =========================================================
+st.markdown(
+    '<div class="section-title">📈 Traffic Impact on Delivery Time</div>',
+    unsafe_allow_html=True
+)
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+traffic_plot = traffic_summary.sort_values(ascending=False)
+
+traffic_colors = [
+    "#4C0519",
+    "#7F1D1D",
+    "#991B1B",
+    "#B91C1C",
+    "#DC2626",
+    "#EF4444"
+]
+
+bars = ax.bar(
+    traffic_plot.index.astype(str),
+    traffic_plot.values,
+    color=traffic_colors[:len(traffic_plot)],
+    edgecolor="#3F0712",
+    linewidth=0.8
+)
+
+ax.set_title(
+    "Average Delivery Time by Traffic Density",
+    fontsize=16,
+    fontweight="bold"
+)
+
+ax.set_xlabel("Road Traffic Density")
+ax.set_ylabel("Average Delivery Time (minutes)")
+
+for bar in bars:
+
+    height = bar.get_height()
+
+    ax.text(
+        bar.get_x() + bar.get_width() / 2,
+        height + 0.3,
+        f"{height:.1f}",
+        ha="center",
+        va="bottom",
+        fontsize=10,
+        fontweight="bold"
+    )
+
+style_chart(ax)
+
+plt.tight_layout()
+
+st.pyplot(fig)
+
+plt.close(fig)
+
+
+# =========================================================
+# CHART 2 — DISTANCE
+# MAROON POINTS + GOLDEN REGRESSION
+# =========================================================
+st.markdown(
+    '<div class="section-title">📍 Distance vs Delivery Time</div>',
+    unsafe_allow_html=True
+)
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+sns.regplot(
+    data=filtered_df,
+    x="distance_km",
+    y="Time_taken (min)",
+    scatter_kws={
+        "alpha": 0.30,
+        "s": 25,
+        "color": "#7F1D1D"
+    },
+    line_kws={
+        "color": "#D97706",
+        "linewidth": 3
+    },
+    ax=ax
+)
+
+ax.set_title(
+    "Relationship Between Distance and Delivery Time",
+    fontsize=16,
+    fontweight="bold"
+)
+
+ax.set_xlabel("Distance (km)")
+ax.set_ylabel("Delivery Time (minutes)")
+
+style_chart(ax)
+
+plt.tight_layout()
+
+st.pyplot(fig)
+
+plt.close(fig)
+
+
+# =========================================================
+# CHART 3 — WEATHER
+# GOLD / AMBER / MUSTARD
+# =========================================================
+st.markdown(
+    '<div class="section-title">🌦️ Weather Impact on Delivery Time</div>',
+    unsafe_allow_html=True
+)
+
+weather_summary = (
+    filtered_df
+    .groupby("Weather_conditions")["Time_taken (min)"]
+    .mean()
+    .sort_values(ascending=False)
+)
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+weather_colors = [
+    "#78350F",
+    "#92400E",
+    "#B45309",
+    "#D97706",
+    "#F59E0B",
+    "#FBBF24",
+    "#FCD34D"
+]
+
+bars = ax.bar(
+    weather_summary.index.astype(str),
+    weather_summary.values,
+    color=weather_colors[:len(weather_summary)],
+    edgecolor="#713F12",
+    linewidth=0.8
+)
+
+ax.set_title(
+    "Average Delivery Time by Weather Condition",
+    fontsize=16,
+    fontweight="bold"
+)
+
+ax.set_xlabel("Weather Condition")
+ax.set_ylabel("Average Delivery Time (minutes)")
+
+for bar in bars:
+
+    height = bar.get_height()
+
+    ax.text(
+        bar.get_x() + bar.get_width() / 2,
+        height + 0.3,
+        f"{height:.1f}",
+        ha="center",
+        va="bottom",
+        fontsize=10,
+        fontweight="bold"
+    )
+
+style_chart(ax)
+
+plt.tight_layout()
+
+st.pyplot(fig)
+
+plt.close(fig)
+
+
+# =========================================================
+# CHART 4 — VEHICLE CONDITION
+# BURGUNDY / TERRACOTTA / ORANGE
+# =========================================================
+st.markdown(
+    '<div class="section-title">🚗 Vehicle Condition Analysis</div>',
+    unsafe_allow_html=True
+)
+
+vehicle_summary = (
+    filtered_df
+    .groupby("Vehicle_condition")["Time_taken (min)"]
+    .mean()
+    .sort_values(ascending=False)
+)
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+vehicle_colors = [
+    "#4C0519",
+    "#7F1D1D",
+    "#991B1B",
+    "#C2410C",
+    "#EA580C",
+    "#F97316"
+]
+
+bars = ax.bar(
+    vehicle_summary.index.astype(str),
+    vehicle_summary.values,
+    color=vehicle_colors[:len(vehicle_summary)],
+    edgecolor="#431407",
+    linewidth=0.8
+)
+
+ax.set_title(
+    "Average Delivery Time by Vehicle Condition",
+    fontsize=16,
+    fontweight="bold"
+)
+
+ax.set_xlabel("Vehicle Condition")
+ax.set_ylabel("Average Delivery Time (minutes)")
+
+for bar in bars:
+
+    height = bar.get_height()
+
+    ax.text(
+        bar.get_x() + bar.get_width() / 2,
+        height + 0.3,
+        f"{height:.1f}",
+        ha="center",
+        va="bottom",
+        fontsize=10,
+        fontweight="bold"
+    )
+
+style_chart(ax)
+
+plt.tight_layout()
+
+st.pyplot(fig)
+
+plt.close(fig)
+
+
+# =========================================================
+# CHART 5 — CITY PERFORMANCE
+# MAROON + GOLD ALTERNATING
+# =========================================================
+st.markdown(
+    '<div class="section-title">🏙️ City Performance</div>',
+    unsafe_allow_html=True
+)
+
+city_summary = (
+    filtered_df
+    .groupby("City")["Time_taken (min)"]
+    .mean()
+    .sort_values(ascending=False)
+)
+
+fig, ax = plt.subplots(figsize=(10, 5))
+
+city_palette = [
+    "#4C0519",
+    "#991B1B",
+    "#D97706",
+    "#7F1D1D",
+    "#F59E0B",
+    "#B91C1C",
+    "#C2410C",
+    "#FBBF24"
+]
+
+bars = ax.bar(
+    city_summary.index.astype(str),
+    city_summary.values,
+    color=[
+        city_palette[i % len(city_palette)]
+        for i in range(len(city_summary))
+    ],
+    edgecolor="#451A03",
+    linewidth=0.8
+)
+
+ax.set_title(
+    "Average Delivery Time by City",
+    fontsize=16,
+    fontweight="bold"
+)
+
+ax.set_xlabel("City")
+ax.set_ylabel("Average Delivery Time (minutes)")
+
+ax.tick_params(axis="x", rotation=15)
+
+for bar in bars:
+
+    height = bar.get_height()
+
+    ax.text(
+        bar.get_x() + bar.get_width() / 2,
+        height + 0.3,
+        f"{height:.1f}",
+        ha="center",
+        va="bottom",
+        fontsize=9,
+        fontweight="bold"
+    )
+
+style_chart(ax)
+
+plt.tight_layout()
+
+st.pyplot(fig)
+
+plt.close(fig)
+
+
+# =========================================================
+# BUSINESS INSIGHTS
+# =========================================================
+st.markdown(
+    '<div class="section-title">💡 Business Insights</div>',
+    unsafe_allow_html=True
+)
+
+insight_cols = st.columns(3)
+
+
+# Insight 1
+with insight_cols[0]:
+
+    st.markdown(
+        f"""
+        <div class="insight-card">
+            <h3>🚦 Traffic Bottleneck</h3>
+            <p>
+                <b>{q1_traffic}</b> traffic has the highest average
+                delivery time at <b>{q1_time:.1f} minutes</b>.
+                Traffic management should be a major operational priority.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+# Insight 2
+with insight_cols[1]:
+
+    st.markdown(
+        f"""
+        <div class="insight-card">
+            <h3>📍 Distance Effect</h3>
+            <p>
+                Distance shows a correlation of
+                <b>{distance_corr:.2f}</b> with delivery time.
+                Longer delivery routes can contribute to increased delays.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+# Insight 3
+with insight_cols[2]:
+
+    st.markdown(
+        f"""
+        <div class="insight-card">
+            <h3>🌦️ Weather + Traffic Risk</h3>
+            <p>
+                The combination of <b>{q3_weather}</b> weather and
+                <b>{q3_traffic}</b> traffic creates the highest
+                average delivery time of <b>{q3_time:.1f} minutes</b>.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+# =========================================================
+# GEMINI AI EXPLANATION
+# =========================================================
+st.markdown(
+    '<div class="section-title">🤖 AI-Powered Business Explanation</div>',
+    unsafe_allow_html=True
+)
 
 if api_key:
-    try:
-        client = genai.Client(api_key=api_key)
-        prompt = f"""
-        Summarize these food delivery analytics results for management:
-        - Total Deliveries: {len(fdf)}
-        - Q1 Traffic Impact: Worst traffic is '{q1_answer}' ({q1_val:.2f} mins avg).
-        - Q2 Distance Impact: Correlation between distance and time is {distance_corr:.4f}.
-        - Q3 Combined Impact: Worst combination is '{q3_weather}' weather and '{q3_traffic}' traffic ({q3_val:.2f} mins avg).
-        - Avg Speed: {fdf['delivery_speed_kmh'].mean():.1f} km/h.
 
-        Provide 3 clear actionable bullet points for management.
-        """
-        with st.spinner("Connecting to Gemini LLM Engine..."):
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt
-            )
-            st.info("🤖 **Gemini AI Generated Explanation:**")
-            st.markdown(response.text)
+    try:
+
+        client = genai.Client(api_key=api_key)
+
+        prompt = f"""
+You are a senior business analyst.
+
+Analyze these calculated findings from a food delivery dataset:
+
+Highest traffic delay:
+{q1_traffic} traffic = {q1_time:.2f} minutes
+
+Distance correlation:
+{distance_corr:.2f}
+
+Worst weather + traffic combination:
+Weather = {q3_weather}
+Traffic = {q3_traffic}
+Average delivery time = {q3_time:.2f} minutes
+
+Write a concise executive explanation covering:
+
+1. What the findings mean
+2. Why these operational factors may matter
+3. Three practical recommendations for a food delivery company
+
+Do not invent numerical results.
+Only interpret the provided findings.
+"""
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+
+        st.success("AI analysis generated successfully.")
+
+        st.write(response.text)
+
     except Exception as e:
-        st.warning(f"Could not connect to Gemini API: {e}")
+
+        st.error(
+            f"AI analysis could not be generated: {e}"
+        )
+
 else:
-    st.info(f"""
-    **Executive Summary (Automated Rules Engine):**
-    - **Primary Bottleneck:** Traffic condition **'{q1_answer}'** creates maximum delay (**{q1_val:.2f} mins** avg).
-    - **Distance Scaling:** Distance correlates positively with delivery duration (**r = {distance_corr:.4f}**).
-    - **Peak Friction Window:** **'{q3_weather}'** weather + **'{q3_traffic}'** traffic leads to maximum latency (**{q3_val:.2f} mins**).
-    """)s
+
+    st.info(
+        "🔑 Add your Gemini API key in the sidebar "
+        "to generate an AI-powered executive explanation."
+    )
+
+
+# =========================================================
+# FOOTER
+# =========================================================
+st.markdown("---")
+
+st.markdown(
+    """
+    <div style="text-align:center; color:#64748b; padding:15px;">
+        🚚 Food Delivery Analytics Dashboard |
+        Built with Python, Pandas, Matplotlib, Seaborn & Streamlit
+    </div>
+    """,
+    unsafe_allow_html=True
+)
