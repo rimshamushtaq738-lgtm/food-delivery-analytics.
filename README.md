@@ -1,34 +1,98 @@
 # 🚚 Food Delivery Analytics & Operational Dashboard
 
-An end-to-end analytics application built to analyze food delivery performance, evaluate logistics bottlenecks, and generate executive business recommendations.
+An end-to-end **Data Analytics and Business Intelligence project** built to analyze food delivery performance, identify operational bottlenecks, and generate actionable business recommendations.
+
+This project transforms raw food delivery data into meaningful insights using **Python, Pandas, NumPy, Matplotlib, Seaborn, and Streamlit**.
 
 ---
 
-## 📊 Executive Summary & Key Findings
+## 📊 Project Overview
 
-### 1. Traffic Impact Analysis (Q1 Answer)
-- High traffic density causes maximum delays in delivery times.
-- **Key Insight:** Peak traffic hours significantly increase turnaround times, requiring dynamic fleet re-allocation.
+The objective of this project is to understand the major factors affecting food delivery performance, including:
 
-### 2. Distance vs. Time Correlation (Q2 Answer)
-- **Pearson Correlation Coefficient:** Shows a positive correlation between delivery distance (`distance_km`) and total delivery time (`Time_taken (min)`).
-- **Key Insight:** Distance is a primary driver of delay, but route congestion adds non-linear delay overhead.
+- 🚦 Road traffic density
+- 📍 Delivery distance
+- 🌦️ Weather conditions
+- 🚗 Vehicle condition
+- 🏙️ City-level performance
+- ⏱️ Delivery time
 
-### 3. Environmental & Traffic Combination (Q3 Answer)
-- The worst delivery conditions occur when adverse weather conditions combine with high road traffic density, resulting in maximum average delivery duration.
+The project follows an end-to-end analytics workflow:
+
+**Raw Data → Data Cleaning → Feature Engineering → Exploratory Data Analysis → Visualization → Business Insights → Interactive Dashboard → AI Explanation**
 
 ---
 
-## 🛠️ Tech Stack & Setup
+## 🏆 Competition Questions & Key Findings
 
-### Requirements
-- Python 3.9+
-- Streamlit
-- Pandas & NumPy
-- Matplotlib & Seaborn
+### 1. 🚦 Traffic Impact Analysis
 
-### How to Run Locally
+**Question:** Which traffic level has the highest average delivery time?
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
+The analysis compares average delivery time across different road traffic density levels.
+
+**Key Business Insight:**  
+Higher traffic density is associated with increased delivery times, highlighting traffic congestion as an important operational bottleneck.
+
+**Business Recommendation:**  
+Food delivery companies can consider dynamic rider allocation and route optimization during high-traffic periods.
+
+---
+
+### 2. 📍 Distance vs. Delivery Time
+
+**Question:** Does delivery distance affect delivery time?
+
+The relationship between `distance_km` and `Time_taken (min)` was analyzed using correlation analysis and a regression visualization.
+
+**Key Finding:**  
+The dataset shows a positive relationship between delivery distance and delivery time.
+
+**Business Insight:**  
+Longer delivery routes generally require more delivery time, while traffic and other operational conditions can further increase delays.
+
+---
+
+### 3. 🌦️ Weather + Traffic Combination
+
+**Question:** Which combination of weather and traffic conditions produces the highest average delivery time?
+
+The dataset was grouped by:
+
+- Weather conditions
+- Road traffic density
+- Average delivery time
+
+The combination with the highest average delivery time was identified programmatically.
+
+**Key Business Insight:**  
+Adverse operating conditions combined with high traffic can create significant delivery delays.
+
+**Business Recommendation:**  
+Delivery operations can prepare additional rider capacity and prioritize route optimization during high-risk conditions.
+
+---
+
+## 🧹 Data Cleaning & Preprocessing
+
+The dataset was cleaned and prepared before analysis.
+
+Key preprocessing steps included:
+
+- Removed duplicate records
+- Cleaned column names
+- Converted relevant columns to numeric data types
+- Handled missing driver age and rating values
+- Handled missing order-time values
+- Removed records with missing essential analytical fields
+- Removed invalid/non-positive delivery times
+- Created a new delivery speed feature
+
+### Feature Engineering
+
+A new feature was calculated:
+
+**Delivery Speed (km/h)**
+
+```text
+Delivery Speed = Distance (km) / Delivery Time (hours)
